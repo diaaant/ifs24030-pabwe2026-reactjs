@@ -1,0 +1,13 @@
+export const LOST_FOUNDS_SET = "lostFounds/setLostFounds";
+export const LOST_FOUND_SET = "lostFounds/setLostFound";
+export const LOST_FOUND_CLEAR = "lostFounds/clearLostFound";
+export const LOST_FOUND_ADD_SET = "lostFounds/setIsLostFoundAdd";
+export const LOST_FOUND_ADDED_SET = "lostFounds/setIsLostFoundAdded";
+export const LOST_FOUND_CHANGE_SET = "lostFounds/setIsLostFoundChange";
+export const LOST_FOUND_CHANGED_SET = "lostFounds/setIsLostFoundChanged";
+export const LOST_FOUND_CHANGE_COVER_SET = "lostFounds/setIsLostFoundChangeCover";
+export const LOST_FOUND_CHANGED_COVER_SET = "lostFounds/setIsLostFoundChangedCover";
+export const LOST_FOUND_DELETE_SET = "lostFounds/setIsLostFoundDelete";
+export const LOST_FOUND_DELETED_SET = "lostFounds/setIsLostFoundDeleted";
+export const LOST_FOUND_STATS_SET = "lostFounds/setLostFoundStats";
+export const LOST_FOUND_RESET_FLAGS = "lostFounds/resetFlags";
