@@ -30,7 +30,7 @@ export default function LoginPage() {
 
   return (
     <div>
-      <h2 className="text-2xl font-extrabold">Masuk</h2>
+      <h1 className="text-2xl font-extrabold">Masuk</h1>
       <p className="mt-1 text-sm text-slate-500">
         Gunakan akun Delcom Open API kamu.
       </p>
@@ -45,7 +45,7 @@ export default function LoginPage() {
           <div className="relative">
             <IconMail
               size={18}
-              className="absolute left-3 top-3 text-slate-400"
+              className="absolute left-3 top-3 text-slate-600"
             />
             <input
               id="login-email-input"
@@ -68,7 +68,7 @@ export default function LoginPage() {
           <div className="relative">
             <IconLock
               size={18}
-              className="absolute left-3 top-3 text-slate-400"
+              className="absolute left-3 top-3 text-slate-600"
             />
             <input
               id="login-password-input"

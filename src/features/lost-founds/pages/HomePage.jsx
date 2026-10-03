@@ -83,7 +83,7 @@ export default function HomePage() {
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative min-w-60 flex-1">
-          <IconSearch size={18} className="absolute left-3 top-2.5 text-slate-400" />
+          <IconSearch size={18} className="absolute left-3 top-2.5 text-slate-600" />
           <input
             type="search"
             aria-label="Cari laporan"
@@ -125,7 +125,7 @@ export default function HomePage() {
                 {cover ? (
                   <img src={cover} alt={item.title} className="h-40 w-full object-cover" />
                 ) : (
-                  <div className="flex h-40 items-center justify-center bg-slate-100 text-slate-400">
+                  <div className="flex h-40 items-center justify-center bg-slate-100 text-slate-600">
                     <IconPhoto size={36} />
                   </div>
                 )}

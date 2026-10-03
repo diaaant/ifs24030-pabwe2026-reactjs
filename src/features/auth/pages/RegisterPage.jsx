@@ -33,7 +33,7 @@ export default function RegisterPage() {
 
   return (
     <div>
-      <h2 className="text-2xl font-extrabold">Buat akun</h2>
+      <h1 className="text-2xl font-extrabold">Buat akun</h1>
       <p className="mt-1 text-sm text-slate-500">
         Daftar untuk mulai membuat laporan.
       </p>
@@ -42,19 +42,42 @@ export default function RegisterPage() {
           <label htmlFor="name" className="mb-1.5 block text-sm font-semibold">
             Nama lengkap
           </label>
-          <input id="name" required value={name} onChange={onNameChange} className={inputClass} />
+          <input
+            id="name"
+            required
+            value={name}
+            onChange={onNameChange}
+            className={inputClass}
+          />
         </div>
         <div>
           <label htmlFor="email" className="mb-1.5 block text-sm font-semibold">
             Email
           </label>
-          <input id="email" type="email" required value={email} onChange={onEmailChange} className={inputClass} />
+          <input
+            id="email"
+            type="email"
+            required
+            value={email}
+            onChange={onEmailChange}
+            className={inputClass}
+          />
         </div>
         <div>
-          <label htmlFor="password" className="mb-1.5 block text-sm font-semibold">
+          <label
+            htmlFor="password"
+            className="mb-1.5 block text-sm font-semibold"
+          >
             Kata sandi
           </label>
-          <input id="password" type="password" required value={password} onChange={onPasswordChange} className={inputClass} />
+          <input
+            id="password"
+            type="password"
+            required
+            value={password}
+            onChange={onPasswordChange}
+            className={inputClass}
+          />
         </div>
         <button
           type="submit"

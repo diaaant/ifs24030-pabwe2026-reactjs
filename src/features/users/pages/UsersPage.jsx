@@ -24,10 +24,15 @@ export default function UsersPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold">Pengguna</h1>
-          <p className="text-sm text-slate-500">Semua pengguna yang terdaftar.</p>
+          <p className="text-sm text-slate-500">
+            Semua pengguna yang terdaftar.
+          </p>
         </div>
         <div className="relative w-full sm:w-72">
-          <IconSearch size={18} className="absolute left-3 top-2.5 text-slate-400" />
+          <IconSearch
+            size={18}
+            className="absolute left-3 top-2.5 text-slate-600"
+          />
           <input
             type="search"
             aria-label="Cari pengguna"
@@ -48,12 +53,22 @@ export default function UsersPage() {
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map((user) => (
-            <li key={user.id} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4">
-              <Avatar name={user.name} photo={user.photo} className="h-12 w-12" />
+            <li
+              key={user.id}
+              className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4"
+            >
+              <Avatar
+                name={user.name}
+                photo={user.photo}
+                className="h-12 w-12"
+                decorative
+              />
               <div className="min-w-0">
                 <p className="truncate font-bold">{user.name}</p>
                 <p className="truncate text-sm text-slate-500">{user.email}</p>
-                <p className="text-xs text-slate-400">Bergabung {formatDate(user.created_at)}</p>
+                <p className="text-xs text-slate-600">
+                  Bergabung {formatDate(user.created_at)}
+                </p>
               </div>
             </li>
           ))}
