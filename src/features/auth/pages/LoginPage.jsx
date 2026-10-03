@@ -36,13 +36,19 @@ export default function LoginPage() {
       </p>
       <form onSubmit={onSubmit} className="mt-8 space-y-5">
         <div>
-          <label htmlFor="email" className="mb-1.5 block text-sm font-semibold">
+          <label
+            htmlFor="login-email-input"
+            className="mb-1.5 block text-sm font-semibold"
+          >
             Email
           </label>
           <div className="relative">
-            <IconMail size={18} className="absolute left-3 top-3 text-slate-400" />
+            <IconMail
+              size={18}
+              className="absolute left-3 top-3 text-slate-400"
+            />
             <input
-              id="email"
+              id="login-email-input"
               type="email"
               required
               value={email}
@@ -53,13 +59,19 @@ export default function LoginPage() {
           </div>
         </div>
         <div>
-          <label htmlFor="password" className="mb-1.5 block text-sm font-semibold">
+          <label
+            htmlFor="login-password-input"
+            className="mb-1.5 block text-sm font-semibold"
+          >
             Kata sandi
           </label>
           <div className="relative">
-            <IconLock size={18} className="absolute left-3 top-3 text-slate-400" />
+            <IconLock
+              size={18}
+              className="absolute left-3 top-3 text-slate-400"
+            />
             <input
-              id="password"
+              id="login-password-input"
               type="password"
               required
               value={password}
@@ -70,6 +82,7 @@ export default function LoginPage() {
           </div>
         </div>
         <button
+          id="login-submit-button"
           type="submit"
           disabled={busy}
           className="w-full rounded-xl bg-teal-700 py-2.5 font-semibold text-white hover:bg-teal-800 disabled:opacity-60"
