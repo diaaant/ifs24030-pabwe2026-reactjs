@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
-import { IconChevronDown, IconLogout, IconMenu2, IconUserCircle } from "@tabler/icons-react";
+import {
+  IconChevronDown,
+  IconLogout,
+  IconMenu2,
+  IconUserCircle,
+} from "@tabler/icons-react";
 import Avatar from "../../../components/Avatar";
 import { asyncLogout } from "../../auth/states/authThunks";
 import { resetAuthAction } from "../../auth/states/authActions";
@@ -31,7 +36,10 @@ export default function NavbarComponent({ onMenuClick }) {
         >
           <IconMenu2 size={22} />
         </button>
-        <Link to="/" className="flex items-center gap-2 font-extrabold text-teal-800">
+        <Link
+          to="/"
+          className="flex items-center gap-2 font-extrabold text-teal-800"
+        >
           <img src="/logo.svg" alt="" className="h-8 w-8" />
           <span className="hidden sm:inline">Lost &amp; Found Kampus</span>
         </Link>
@@ -45,13 +53,17 @@ export default function NavbarComponent({ onMenuClick }) {
           onClick={() => setOpen(!open)}
           className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 hover:bg-slate-100"
         >
-          <Avatar name={profile?.name} photo={profile?.photo} />
-          <span className="hidden text-sm font-semibold sm:inline">{profile?.name}</span>
+          <Avatar name={profile?.name} photo={profile?.photo} decorative />
+          <span className="hidden text-sm font-semibold sm:inline">
+            {profile?.name}
+          </span>
           <IconChevronDown size={16} />
         </button>
         {open ? (
           <div className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
-            <p className="truncate px-3 py-2 text-xs text-slate-500">{profile?.email}</p>
+            <p className="truncate px-3 py-2 text-xs text-slate-500">
+              {profile?.email}
+            </p>
             <Link
               to="/profile"
               onClick={() => setOpen(false)}
