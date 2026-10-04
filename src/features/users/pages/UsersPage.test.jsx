@@ -1,48 +1,50 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders } from "../../../test-utils";
-import userApi from "../api/userApi";
 import UsersPage from "./UsersPage";
+import { fetchUsers } from "../api/userApi";
+import { renderWithProviders, stateWith } from "../../../test-utils";
 
-vi.mock("../api/userApi", () => ({ default: { getUsers: vi.fn() } }));
-vi.mock("../../../helpers/toolsHelper", async (original) => ({
-  ...(await original()),
-  showErrorDialog: vi.fn(),
-}));
+vi.mock("../api/userApi");
+vi.mock("../../../helpers/toolsHelper", async (original) => ({ ...(await original()), showErrorDialog: vi.fn() }));
 
-const users = [
-  { id: 1, name: "Dian Rafael", email: "dian@del.ac.id", photo: "http://x.test/p.png", created_at: "2024-10-05T03:26:57.000000Z" },
-  { id: 2, name: "Budi", email: "budi@del.ac.id", photo: null, created_at: "2024-10-06T03:26:57.000000Z" },
+const USERS = [
+  { id: 1, name: "Budi Santoso", email: "budi@del.ac.id", photo: null },
+  { id: 2, name: "Citra Dewi", email: "citra@del.ac.id", photo: "uploads/c.png" },
 ];
 
+const setup = () =>
+  renderWithProviders(<UsersPage />, { preloadedState: stateWith({ users: { profile: USERS[0] } }) });
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  fetchUsers.mockResolvedValue({ data: { users: USERS } });
+});
+
 describe("UsersPage", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    userApi.getUsers.mockResolvedValue(users);
+  it("memuat dan menampilkan daftar pengguna, menandai akun sendiri", async () => {
+    setup();
+    expect(await screen.findByText("Citra Dewi")).toBeInTheDocument();
+    expect(screen.getByText("2 orang terdaftar di TemuBalik.")).toBeInTheDocument();
+    expect(screen.getByText("Anda")).toBeInTheDocument();
+    expect(screen.getByText(/Pilih seorang pengguna/)).toBeInTheDocument();
   });
 
-  it("menampilkan loading lalu daftar pengguna", async () => {
-    renderWithProviders(<UsersPage />);
-    expect(screen.getByText("Memuat pengguna...")).toBeInTheDocument();
-    expect(await screen.findByText("Dian Rafael")).toBeInTheDocument();
-    expect(screen.getByText("budi@del.ac.id")).toBeInTheDocument();
-    expect(screen.getByAltText("Dian Rafael")).toBeInTheDocument();
-  });
-
-  it("pencarian menyaring dan menampilkan keadaan kosong", async () => {
-    renderWithProviders(<UsersPage />);
-    await screen.findByText("Dian Rafael");
-    await userEvent.type(screen.getByLabelText("Cari pengguna"), "budi");
-    expect(screen.queryByText("Dian Rafael")).not.toBeInTheDocument();
+  it("pencarian menyaring berdasarkan nama atau email", async () => {
+    setup();
+    await screen.findByText("Citra Dewi");
+    await userEvent.type(screen.getByLabelText("Cari pengguna"), "citra@");
+    expect(screen.queryByText("Budi Santoso")).not.toBeInTheDocument();
     await userEvent.clear(screen.getByLabelText("Cari pengguna"));
     await userEvent.type(screen.getByLabelText("Cari pengguna"), "zzz");
     expect(screen.getByText("Pengguna tidak ditemukan.")).toBeInTheDocument();
   });
 
-  it("menampilkan keadaan kosong jika API gagal", async () => {
-    userApi.getUsers.mockRejectedValue(new Error("down"));
-    renderWithProviders(<UsersPage />);
-    expect(await screen.findByText("Pengguna tidak ditemukan.")).toBeInTheDocument();
+  it("memilih pengguna menampilkan panel detail", async () => {
+    const { store } = setup();
+    await userEvent.click(await screen.findByRole("button", { name: /Citra Dewi/ }));
+    const panel = screen.getByRole("complementary", { name: "Detail pengguna" });
+    expect(panel).toHaveTextContent("citra@del.ac.id");
+    expect(store.getState().users.user.id).toBe(2);
   });
 });

@@ -1,28 +1,22 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  BASE_URL,
-  api,
-  assetUrl,
+  buildUrl,
+  callApi,
   getAccessToken,
   putAccessToken,
   removeAccessToken,
-  request,
 } from "./apiHelper";
 
-const mockFetch = (body, ok = true, status = 200) => {
-  const fn = vi.fn().mockResolvedValue({
-    ok,
-    status,
-    json: () => (body === undefined ? Promise.reject(new Error("bad json")) : Promise.resolve(body)),
-  });
-  vi.stubGlobal("fetch", fn);
-  return fn;
+const mockFetch = (response) => {
+  const spy = vi.fn().mockResolvedValue(response);
+  vi.stubGlobal("fetch", spy);
+  return spy;
 };
+const jsonResponse = (json, ok = true, status = 200) => ({ ok, status, json: async () => json });
 
-describe("apiHelper", () => {
-  beforeEach(() => localStorage.clear());
-  afterEach(() => vi.unstubAllGlobals());
+afterEach(() => vi.unstubAllGlobals());
 
+describe("token storage", () => {
   it("menyimpan, membaca, dan menghapus token", () => {
     expect(getAccessToken()).toBeNull();
     putAccessToken("abc");
@@ -30,92 +24,61 @@ describe("apiHelper", () => {
     removeAccessToken();
     expect(getAccessToken()).toBeNull();
   });
+});
 
-  it("assetUrl menangani null, url absolut, dan path relatif", () => {
-    expect(assetUrl(null)).toBeNull();
-    expect(assetUrl("https://x.test/a.png")).toBe("https://x.test/a.png");
-    expect(assetUrl("img/a.png")).toBe(`${new URL(BASE_URL).origin}/img/a.png`);
-    expect(assetUrl("/img/a.png")).toBe(`${new URL(BASE_URL).origin}/img/a.png`);
+describe("buildUrl", () => {
+  it("menambahkan query dan membuang nilai kosong", () => {
+    const url = buildUrl("/lost-founds", { status: "lost", is_me: 1, a: "", b: null, c: undefined });
+    expect(url).toBe(`${DELCOM_BASEURL}/lost-founds?status=lost&is_me=1`);
   });
 
-  it("mengirim GET dengan query (nilai kosong dibuang) dan bearer token", async () => {
+  it("bekerja tanpa params", () => {
+    expect(buildUrl("/users")).toBe(`${DELCOM_BASEURL}/users`);
+  });
+});
+
+describe("callApi", () => {
+  it("GET tanpa token dan tanpa body", async () => {
+    const spy = mockFetch(jsonResponse({ success: true, data: { ok: 1 } }));
+    const json = await callApi("/users");
+    expect(json.data.ok).toBe(1);
+    const [, init] = spy.mock.calls[0];
+    expect(init.method).toBe("GET");
+    expect(init.headers.Authorization).toBeUndefined();
+    expect(init.body).toBeUndefined();
+  });
+
+  it("mengirim bearer token dan body JSON", async () => {
     putAccessToken("tok");
-    const fetchMock = mockFetch({ status: "success", data: 1 });
-    const json = await request("/lost-founds", {
-      query: { status: "lost", is_completed: "", is_me: undefined, x: null, y: 0 },
-    });
-    expect(json.data).toBe(1);
-    const [url, options] = fetchMock.mock.calls[0];
-    expect(url).toBe(`${BASE_URL}/lost-founds?status=lost&y=0`);
-    expect(options.method).toBe("GET");
-    expect(options.headers.Authorization).toBe("Bearer tok");
-    expect(options.body).toBeUndefined();
+    const spy = mockFetch(jsonResponse({ success: true }));
+    await callApi("/auth/login", { method: "POST", body: { a: 1 } });
+    const [, init] = spy.mock.calls[0];
+    expect(init.headers.Authorization).toBe("Bearer tok");
+    expect(init.headers["Content-Type"]).toBe("application/json");
+    expect(init.body).toBe(JSON.stringify({ a: 1 }));
   });
 
-  it("tanpa query tidak menambahkan tanda tanya", async () => {
-    const fetchMock = mockFetch({ status: "success" });
-    await request("/users");
-    expect(fetchMock.mock.calls[0][0]).toBe(`${BASE_URL}/users`);
-    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBeUndefined();
-  });
-
-  it("auth=false tidak mengirim Authorization walau token ada", async () => {
-    putAccessToken("tok");
-    const fetchMock = mockFetch({ status: "success" });
-    await request("/auth/login", { method: "POST", auth: false, body: { a: 1 } });
-    const options = fetchMock.mock.calls[0][1];
-    expect(options.headers.Authorization).toBeUndefined();
-    expect(options.headers["Content-Type"]).toBe("application/json");
-    expect(options.body).toBe(JSON.stringify({ a: 1 }));
-  });
-
-  it("mengirim FormData tanpa Content-Type manual", async () => {
-    const fetchMock = mockFetch({ status: "success" });
+  it("mengirim FormData apa adanya tanpa Content-Type", async () => {
+    const spy = mockFetch(jsonResponse({ success: true }));
     const form = new FormData();
-    await request("/x", { method: "POST", body: form });
-    const options = fetchMock.mock.calls[0][1];
-    expect(options.body).toBe(form);
-    expect(options.headers["Content-Type"]).toBeUndefined();
+    await callApi("/x", { method: "POST", form });
+    const [, init] = spy.mock.calls[0];
+    expect(init.body).toBe(form);
+    expect(init.headers["Content-Type"]).toBeUndefined();
   });
 
-  it("melempar error berisi pesan dan detail validasi", async () => {
-    mockFetch(
-      { status: "fail", message: "Data tidak valid", data: { email: ["Wajib diisi", "Format salah"] } },
-      false,
-      400,
-    );
-    await expect(request("/x")).rejects.toMatchObject({
-      message: "Data tidak valid: Wajib diisi, Format salah",
-      status: 400,
-    });
+  it("melempar error dengan pesan dari server", async () => {
+    mockFetch(jsonResponse({ success: false, message: "Salah" }, false, 400));
+    await expect(callApi("/x")).rejects.toThrow("Salah");
   });
 
-  it("melempar error hanya dengan pesan jika tidak ada detail", async () => {
-    mockFetch({ status: "fail", message: "Kredensial akun tidak ditemukan" }, false, 401);
-    await expect(request("/x")).rejects.toThrow("Kredensial akun tidak ditemukan");
+  it("melempar error generik bila respons bukan JSON", async () => {
+    mockFetch({ ok: false, status: 500, json: async () => { throw new Error("bad json"); } });
+    await expect(callApi("/x")).rejects.toThrow("Permintaan gagal (500)");
   });
 
-  it("mengabaikan data non-objek", async () => {
-    mockFetch({ status: "fail", message: "Gagal", data: "teks" }, false, 400);
-    await expect(request("/x")).rejects.toThrow("Gagal");
-  });
-
-  it("memakai pesan default jika respons bukan JSON", async () => {
-    mockFetch(undefined, false, 500);
-    await expect(request("/x")).rejects.toThrow("Terjadi kesalahan pada server");
-  });
-
-  it("menganggap status bukan success sebagai error walau HTTP 200", async () => {
-    mockFetch({ status: "fail", message: "Ditolak" }, true, 200);
-    await expect(request("/x")).rejects.toThrow("Ditolak");
-  });
-
-  it("helper api memakai method yang sesuai", async () => {
-    const fetchMock = mockFetch({ status: "success" });
-    await api.get("/a");
-    await api.post("/a");
-    await api.put("/a");
-    await api.delete("/a");
-    expect(fetchMock.mock.calls.map((c) => c[1].method)).toEqual(["GET", "POST", "PUT", "DELETE"]);
+  it("menganggap success:false sebagai error walau HTTP 200", async () => {
+    mockFetch(jsonResponse({ success: false, message: "Ditolak" }));
+    await expect(callApi("/x")).rejects.toThrow("Ditolak");
   });
 });

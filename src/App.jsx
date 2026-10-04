@@ -5,7 +5,6 @@ import RegisterPage from "./features/auth/pages/RegisterPage";
 import LostFoundLayout from "./features/lost-founds/layouts/LostFoundLayout";
 import HomePage from "./features/lost-founds/pages/HomePage";
 import DetailPage from "./features/lost-founds/pages/DetailPage";
-import StatsPage from "./features/lost-founds/pages/StatsPage";
 import UsersPage from "./features/users/pages/UsersPage";
 import ProfilePage from "./features/users/pages/ProfilePage";
 
@@ -18,10 +17,9 @@ export default function App() {
         <Route path="register" element={<RegisterPage />} />
       </Route>
 
-      <Route element={<LostFoundLayout />}>
+      <Route path="/" element={<LostFoundLayout />}>
         <Route index element={<HomePage />} />
         <Route path="lost-founds/:id" element={<DetailPage />} />
-        <Route path="stats" element={<StatsPage />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="profile" element={<ProfilePage />} />
       </Route>

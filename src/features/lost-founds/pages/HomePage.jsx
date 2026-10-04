@@ -1,165 +1,145 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { Link } from "react-router-dom";
-import { IconPencil, IconPhoto, IconPlus, IconSearch, IconTrash } from "@tabler/icons-react";
-import StatusBadge from "../../../components/StatusBadge";
-import { assetUrl } from "../../../helpers/apiHelper";
-import { formatDate } from "../../../helpers/toolsHelper";
-import { asyncGetLostFounds, asyncDeleteLostFound } from "../states/lostFoundThunks";
-import { resetLostFoundFlagsAction } from "../states/lostFoundActions";
+import { IconInbox, IconLoader2, IconPlus, IconSearch } from "@tabler/icons-react";
+import Segmented from "../../../components/Segmented";
+import useInput from "../../../hooks/useInput";
+import { isDone } from "../../../helpers/toolsHelper";
+import ItemCard from "../components/ItemCard";
+import StatsPanel from "../components/StatsPanel";
 import AddModal from "../modals/AddModal";
-import ChangeModal from "../modals/ChangeModal";
+import { asyncChangeLostFound, asyncDeleteLostFound, asyncGetLostFounds } from "../states/action";
 
-const selectClass =
-  "rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-teal-600 focus:outline-none";
+const STATUS_OPTIONS = [["all", "Semua"], ["lost", "Hilang"], ["found", "Ditemukan"]];
+const PROGRESS_OPTIONS = [["all", "Semua"], ["open", "Berjalan"], ["done", "Selesai"]];
+const SCOPE_OPTIONS = [["all", "Semua laporan"], ["mine", "Laporan saya"]];
+
+function StatTile({ label, value, tone }) {
+  return (
+    <div className={`rounded-[1.75rem] p-5 ${tone}`}>
+      <p className="text-sm font-bold">{label}</p>
+      <p className="mt-1 font-display text-4xl font-extrabold">{value}</p>
+    </div>
+  );
+}
 
 export default function HomePage() {
   const dispatch = useDispatch();
-  const { lostFounds, isLostFoundAdded, isLostFoundChanged, isLostFoundDeleted } =
-    useSelector((state) => state.lostFounds);
-  const profile = useSelector((state) => state.users.profile);
+  const [searchParams] = useSearchParams();
+  const showingStats = searchParams.get("tampilan") === "statistik";
+  const { lostFounds, isLostFound } = useSelector((state) => state.lostFounds);
 
-  const [status, setStatus] = useState("");
-  const [completed, setCompleted] = useState("");
-  const [mine, setMine] = useState(false);
-  const [search, setSearch] = useState("");
-  const [addOpen, setAddOpen] = useState(false);
-  const [editItem, setEditItem] = useState(null);
+  const [scope, setScope] = useState("all");
+  const [status, setStatus] = useState("all");
+  const [progress, setProgress] = useState("all");
+  const [adding, setAdding] = useState(false);
+  const keyword = useInput("");
 
-  const filters = useMemo(
-    () => ({ status, is_completed: completed, is_me: mine ? 1 : undefined }),
-    [status, completed, mine],
+  const reload = useCallback(
+    () => dispatch(asyncGetLostFounds({ is_me: scope === "mine" ? 1 : undefined })),
+    [dispatch, scope],
   );
 
   useEffect(() => {
-    dispatch(asyncGetLostFounds(filters));
-  }, [dispatch, filters]);
+    reload();
+  }, [reload]);
 
-  const done = isLostFoundAdded || isLostFoundChanged || isLostFoundDeleted;
-  useEffect(() => {
-    if (done) {
-      dispatch(resetLostFoundFlagsAction());
-      dispatch(asyncGetLostFounds(filters));
-    }
-  }, [done, dispatch, filters]);
-
-  const list = lostFounds ?? [];
-  const keyword = search.trim().toLowerCase();
-  const visible = list.filter((item) =>
-    `${item.title} ${item.description} ${item.author.name}`.toLowerCase().includes(keyword),
+  const needle = keyword.value.trim().toLowerCase();
+  const visible = lostFounds.filter(
+    (item) =>
+      (status === "all" || item.status === status) &&
+      (progress === "all" || isDone(item) === (progress === "done")) &&
+      `${item.title} ${item.description}`.toLowerCase().includes(needle),
   );
 
-  const summary = [
-    { label: "Total", value: list.length },
-    { label: "Barang hilang", value: list.filter((i) => i.status === "lost").length },
-    { label: "Barang ditemukan", value: list.filter((i) => i.status === "found").length },
-    { label: "Selesai", value: list.filter((i) => i.is_completed).length },
-  ];
+  const toggleDone = async (item) => {
+    const changed = await dispatch(
+      asyncChangeLostFound(item.id, {
+        title: item.title,
+        description: item.description,
+        status: item.status,
+        is_completed: isDone(item) ? 0 : 1,
+      }),
+    );
+    if (changed) reload();
+  };
+
+  const remove = async (item) => {
+    if (await dispatch(asyncDeleteLostFound(item.id))) reload();
+  };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold">Laporan</h1>
-          <p className="text-sm text-slate-500">Barang hilang dan barang temuan di kampus.</p>
+          <h2 className="text-3xl font-extrabold text-indigo-950">
+            {showingStats ? "Statistik laporan" : "Daftar laporan"}
+          </h2>
+          <p className="mt-1 text-stone-600">Pantau barang hilang dan temuan di sekitar kampus.</p>
         </div>
         <button
           type="button"
-          onClick={() => setAddOpen(true)}
-          className="inline-flex items-center gap-2 rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-800"
+          onClick={() => setAdding(true)}
+          className="flex items-center gap-2 rounded-2xl bg-amber-300 px-5 py-3 font-extrabold text-indigo-950 shadow-lg shadow-amber-300/40 transition hover:bg-amber-400"
         >
-          <IconPlus size={18} /> Tambah laporan
+          <IconPlus size={20} /> Buat laporan
         </button>
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {summary.map((item) => (
-          <div key={item.label} className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-sm text-slate-500">{item.label}</p>
-            <p className="mt-1 text-3xl font-extrabold">{item.value}</p>
-          </div>
-        ))}
+        <StatTile label="Total laporan" value={lostFounds.length} tone="bg-indigo-950 text-white" />
+        <StatTile label="Barang hilang" value={lostFounds.filter((i) => i.status === "lost").length} tone="bg-rose-100 text-rose-800" />
+        <StatTile label="Barang ditemukan" value={lostFounds.filter((i) => i.status === "found").length} tone="bg-emerald-100 text-emerald-800" />
+        <StatTile label="Sudah selesai" value={lostFounds.filter(isDone).length} tone="bg-amber-100 text-amber-900" />
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative min-w-60 flex-1">
-          <IconSearch size={18} className="absolute left-3 top-2.5 text-slate-600" />
-          <input
-            type="search"
-            aria-label="Cari laporan"
-            placeholder="Cari judul, deskripsi, atau pelapor"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-xl border border-slate-300 bg-white py-2 pl-10 pr-3 text-sm focus:border-teal-600 focus:outline-none"
-          />
-        </div>
-        <select aria-label="Filter jenis" value={status} onChange={(e) => setStatus(e.target.value)} className={selectClass}>
-          <option value="">Semua jenis</option>
-          <option value="lost">Hilang</option>
-          <option value="found">Ditemukan</option>
-        </select>
-        <select aria-label="Filter penyelesaian" value={completed} onChange={(e) => setCompleted(e.target.value)} className={selectClass}>
-          <option value="">Semua status</option>
-          <option value="0">Belum selesai</option>
-          <option value="1">Selesai</option>
-        </select>
-        <label className="flex items-center gap-2 text-sm font-semibold">
-          <input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} className="h-4 w-4 accent-teal-700" />
-          Laporan saya
-        </label>
-      </div>
-
-      {lostFounds === null ? (
-        <p className="text-slate-500">Memuat laporan...</p>
-      ) : visible.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-slate-500">
-          Tidak ada laporan yang cocok.
-        </p>
+      {showingStats ? (
+        <StatsPanel />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {visible.map((item) => {
-            const cover = assetUrl(item.cover);
-            const isOwner = profile?.id === item.user_id;
-            return (
-              <article key={item.id} className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                {cover ? (
-                  <img src={cover} alt={item.title} className="h-40 w-full object-cover" />
-                ) : (
-                  <div className="flex h-40 items-center justify-center bg-slate-100 text-slate-600">
-                    <IconPhoto size={36} />
-                  </div>
-                )}
-                <div className="flex flex-1 flex-col gap-2 p-4">
-                  <StatusBadge status={item.status} isCompleted={item.is_completed} />
-                  <h2 className="font-bold leading-snug">{item.title}</h2>
-                  <p className="line-clamp-2 text-sm text-slate-600">{item.description}</p>
-                  <p className="mt-auto pt-2 text-xs text-slate-500">
-                    {item.author.name} · {formatDate(item.created_at)}
-                  </p>
-                  <div className="flex items-center gap-2 pt-1">
-                    <Link to={`/lost-founds/${item.id}`} className="rounded-lg bg-teal-50 px-3 py-1.5 text-sm font-semibold text-teal-800 hover:bg-teal-100">
-                      Detail
-                    </Link>
-                    {isOwner ? (
-                      <>
-                        <button type="button" aria-label={`Ubah ${item.title}`} onClick={() => setEditItem(item)} className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100">
-                          <IconPencil size={18} />
-                        </button>
-                        <button type="button" aria-label={`Hapus ${item.title}`} onClick={() => dispatch(asyncDeleteLostFound(item.id))} className="rounded-lg p-1.5 text-red-600 hover:bg-red-50">
-                          <IconTrash size={18} />
-                        </button>
-                      </>
-                    ) : null}
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
+        <>
+          <div className="space-y-3 rounded-[1.75rem] bg-stone-200/60 p-4">
+            <div className="relative">
+              <IconSearch size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-600" />
+              <input
+                type="search"
+                aria-label="Cari laporan"
+                placeholder="Cari judul atau deskripsi…"
+                value={keyword.value}
+                onChange={keyword.onChange}
+                className="w-full rounded-2xl border-0 bg-white py-3 pl-11 pr-4 outline-none ring-1 ring-stone-200 focus:ring-2 focus:ring-indigo-600"
+              />
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Segmented label="Cakupan" value={scope} options={SCOPE_OPTIONS} onChange={setScope} />
+              <Segmented label="Jenis" value={status} options={STATUS_OPTIONS} onChange={setStatus} />
+              <Segmented label="Progres" value={progress} options={PROGRESS_OPTIONS} onChange={setProgress} />
+            </div>
+          </div>
+
+          {isLostFound && (
+            <p role="status" className="flex items-center justify-center gap-2 py-10 text-stone-600">
+              <IconLoader2 className="animate-spin" /> Memuat laporan…
+            </p>
+          )}
+
+          {!isLostFound && visible.length === 0 && (
+            <div className="grid place-items-center gap-2 rounded-[1.75rem] border-2 border-dashed border-stone-300 py-16 text-stone-600">
+              <IconInbox size={40} />
+              <p className="font-semibold">Tidak ada laporan yang cocok.</p>
+            </div>
+          )}
+
+          {!isLostFound && visible.length > 0 && (
+            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+              {visible.map((item) => (
+                <ItemCard key={item.id} item={item} onToggleDone={toggleDone} onDelete={remove} />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
-      {addOpen ? <AddModal onClose={() => setAddOpen(false)} /> : null}
-      {editItem ? <ChangeModal item={editItem} onClose={() => setEditItem(null)} /> : null}
+      {adding && <AddModal onClose={() => setAdding(false)} onSaved={reload} />}
     </div>
   );
 }

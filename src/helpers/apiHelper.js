@@ -1,75 +1,37 @@
-const TOKEN_KEY = "accessToken";
+// Pembungkus fetch untuk REST API Delcom + penyimpanan token di localStorage.
+const TOKEN_SLOT = "temubalik.token";
 
-// DELCOM_BASEURL diinjeksikan oleh vite.config.js (define)
-export const BASE_URL = DELCOM_BASEURL;
+export const getAccessToken = () => localStorage.getItem(TOKEN_SLOT);
+export const putAccessToken = (token) => localStorage.setItem(TOKEN_SLOT, token);
+export const removeAccessToken = () => localStorage.removeItem(TOKEN_SLOT);
 
-export const getAccessToken = () => localStorage.getItem(TOKEN_KEY);
-export const putAccessToken = (token) => localStorage.setItem(TOKEN_KEY, token);
-export const removeAccessToken = () => localStorage.removeItem(TOKEN_KEY);
-
-// Cover & foto dari API berupa path relatif (img/...) atau URL absolut.
-export const assetUrl = (path) => {
-  if (!path) return null;
-  if (/^https?:\/\//i.test(path)) return path;
-  return `${new URL(BASE_URL).origin}/${path.replace(/^\//, "")}`;
+export const buildUrl = (path, params = {}) => {
+  // Argumen kedua dibutuhkan agar base URL relatif (mis. "/api-proxy") valid.
+  const url = new URL(`${DELCOM_BASEURL}${path}`, window.location.origin);
+  Object.entries(params)
+    .filter(([, value]) => `${value ?? ""}` !== "")
+    .forEach(([key, value]) => url.searchParams.append(key, value));
+  return url.toString();
 };
 
-const buildQuery = (query) => {
-  const params = new URLSearchParams();
-  Object.entries(query).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") {
-      params.append(key, value);
-    }
-  });
-  const text = params.toString();
-  return text ? `?${text}` : "";
-};
-
-const buildMessage = (json) => {
-  const details =
-    json.data && typeof json.data === "object"
-      ? Object.values(json.data).flat().join(", ")
-      : "";
-  return (
-    [json.message, details].filter(Boolean).join(": ") ||
-    "Terjadi kesalahan pada server"
-  );
-};
-
-export async function request(
-  path,
-  { method = "GET", query = {}, body, auth = true } = {},
-) {
+export async function callApi(path, { method = "GET", body, form, params } = {}) {
   const headers = { Accept: "application/json" };
   const token = getAccessToken();
-  if (auth && token) headers.Authorization = `Bearer ${token}`;
+  if (token) headers.Authorization = `Bearer ${token}`;
 
   let payload;
-  if (body instanceof FormData) {
-    payload = body; // browser mengatur boundary multipart sendiri
-  } else if (body !== undefined) {
+  if (form) {
+    payload = form;
+  } else if (body) {
     headers["Content-Type"] = "application/json";
     payload = JSON.stringify(body);
   }
 
-  const response = await fetch(`${BASE_URL}${path}${buildQuery(query)}`, {
-    method,
-    headers,
-    body: payload,
-  });
+  const response = await fetch(buildUrl(path, params), { method, headers, body: payload });
   const json = await response.json().catch(() => ({}));
 
-  if (!response.ok || json.status !== "success") {
-    const error = new Error(buildMessage(json));
-    error.status = response.status;
-    throw error;
+  if (!response.ok || json.success === false) {
+    throw new Error(json.message || `Permintaan gagal (${response.status})`);
   }
   return json;
 }
-
-export const api = {
-  get: (path, options) => request(path, { ...options, method: "GET" }),
-  post: (path, options) => request(path, { ...options, method: "POST" }),
-  put: (path, options) => request(path, { ...options, method: "PUT" }),
-  delete: (path, options) => request(path, { ...options, method: "DELETE" }),
-};

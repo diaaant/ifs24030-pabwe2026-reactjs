@@ -1,118 +1,109 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders } from "../../../test-utils";
-import userApi from "../api/userApi";
-import { showErrorDialog } from "../../../helpers/toolsHelper";
-import {
-  setIsChangeProfilePasswordAction,
-  setIsChangeProfilePhotoAction,
-} from "../states/userActions";
 import ProfilePage from "./ProfilePage";
+import { fetchMe, postMyPhoto, putMe, putMyPassword } from "../api/userApi";
+import { showWarningDialog } from "../../../helpers/toolsHelper";
+import { renderWithProviders, stateWith } from "../../../test-utils";
 
-vi.mock("../api/userApi", () => ({
-  default: {
-    getProfile: vi.fn(),
-    updateProfile: vi.fn(),
-    updatePhoto: vi.fn(),
-    updatePassword: vi.fn(),
-  },
-}));
+vi.mock("../api/userApi");
 vi.mock("../../../helpers/toolsHelper", async (original) => ({
   ...(await original()),
   showErrorDialog: vi.fn(),
   showSuccessDialog: vi.fn(),
+  showWarningDialog: vi.fn(),
 }));
 
-const profile = { id: 1, name: "Dian", email: "dian@del.ac.id", photo: null };
-const open = () => renderWithProviders(<ProfilePage />, { preloadedState: { users: { profile, isProfile: true } } });
+const ME = { id: 1, name: "Budi Santoso", email: "budi@del.ac.id", photo: null };
+const setup = (patch = {}) =>
+  renderWithProviders(<ProfilePage />, { preloadedState: stateWith({ users: { profile: ME, ...patch } }) });
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  fetchMe.mockResolvedValue({ data: { user: { ...ME, name: "Budi Baru" } } });
+});
 
 describe("ProfilePage", () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  it("menampilkan loading jika profil belum ada", () => {
-    renderWithProviders(<ProfilePage />);
-    expect(screen.getByText("Memuat profil...")).toBeInTheDocument();
+  it("menampilkan identitas dan form terisi", () => {
+    setup();
+    expect(screen.getByRole("heading", { name: "Budi Santoso" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Nama")).toHaveValue("Budi Santoso");
+    expect(screen.getByLabelText("Email")).toHaveValue("budi@del.ac.id");
   });
 
-  it("form terisi data profil", () => {
-    open();
-    expect(screen.getByLabelText("Nama")).toHaveValue("Dian");
-    expect(screen.getByLabelText("Email")).toHaveValue("dian@del.ac.id");
-  });
-
-  it("mengubah profil", async () => {
-    userApi.updateProfile.mockResolvedValue({ ...profile, name: "Dian R" });
-    open();
+  it("mengubah data diri dan menyegarkan profil", async () => {
+    putMe.mockResolvedValue({});
+    const { store } = setup();
     await userEvent.clear(screen.getByLabelText("Nama"));
-    await userEvent.type(screen.getByLabelText("Nama"), "Dian R");
-    await userEvent.click(screen.getByRole("button", { name: "Simpan perubahan" }));
-    await waitFor(() =>
-      expect(userApi.updateProfile).toHaveBeenCalledWith({ name: "Dian R", email: "dian@del.ac.id" }),
-    );
-    await waitFor(() => expect(screen.getByLabelText("Nama")).toHaveValue("Dian R"));
+    await userEvent.type(screen.getByLabelText("Nama"), "  Budi Baru ");
+    await userEvent.click(screen.getByRole("button", { name: "Simpan data diri" }));
+    await waitFor(() => expect(putMe).toHaveBeenCalledWith({ name: "Budi Baru", email: "budi@del.ac.id" }));
+    await waitFor(() => expect(store.getState().users.profile.name).toBe("Budi Baru"));
   });
 
-  it("mengunggah foto profil", async () => {
-    userApi.updatePhoto.mockResolvedValue({});
-    userApi.getProfile.mockResolvedValue(profile);
-    open();
-    const button = screen.getByRole("button", { name: "Unggah foto" });
-    expect(button).toBeDisabled();
-    const file = new File(["x"], "me.png", { type: "image/png" });
-    fireEvent.change(screen.getByLabelText("Pilih foto"), { target: { files: [file] } });
-    expect(button).toBeEnabled();
-    await userEvent.click(button);
-    await waitFor(() => expect(userApi.updatePhoto).toHaveBeenCalledWith(file));
-    await waitFor(() => expect(button).toBeDisabled()); // file direset setelah sukses
+  it("tombol unggah foto nonaktif tanpa berkas; menolak non-gambar", () => {
+    setup();
+    expect(screen.getByRole("button", { name: "Unggah foto" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Pilih foto"), {
+      target: { files: [new File(["x"], "a.txt", { type: "text/plain" })] },
+    });
+    expect(showWarningDialog).toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Unggah foto" })).toBeDisabled();
   });
 
-  it("pemilihan foto yang dibatalkan mengosongkan pilihan", () => {
-    open();
+  it("mengunggah foto lalu mengosongkan pilihan; pilihan kosong diabaikan", async () => {
+    postMyPhoto.mockResolvedValue({});
+    setup();
     const input = screen.getByLabelText("Pilih foto");
-    fireEvent.change(input, { target: { files: [new File(["x"], "a.png", { type: "image/png" })] } });
+    const file = new File(["x"], "a.png", { type: "image/png" });
+    await userEvent.upload(input, file);
     expect(screen.getByRole("button", { name: "Unggah foto" })).toBeEnabled();
+    await userEvent.click(screen.getByRole("button", { name: "Unggah foto" }));
+    await waitFor(() => expect(postMyPhoto).toHaveBeenCalledWith(file));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Unggah foto" })).toBeDisabled());
     fireEvent.change(input, { target: { files: [] } });
     expect(screen.getByRole("button", { name: "Unggah foto" })).toBeDisabled();
   });
 
-  it("mengganti kata sandi lalu mengosongkan form", async () => {
-    userApi.updatePassword.mockResolvedValue({});
-    open();
-    await userEvent.type(screen.getByLabelText("Kata sandi saat ini"), "lama123");
-    await userEvent.type(screen.getByLabelText("Kata sandi baru"), "baru123");
-    await userEvent.type(screen.getByLabelText("Konfirmasi kata sandi baru"), "baru123");
+  it("foto tetap terpilih bila unggah gagal", async () => {
+    postMyPhoto.mockRejectedValue(new Error("gagal"));
+    setup();
+    await userEvent.upload(screen.getByLabelText("Pilih foto"), new File(["x"], "a.png", { type: "image/png" }));
+    await userEvent.click(screen.getByRole("button", { name: "Unggah foto" }));
+    await waitFor(() => expect(postMyPhoto).toHaveBeenCalled());
+    expect(screen.getByRole("button", { name: "Unggah foto" })).toBeEnabled();
+  });
+
+  it("validasi ganti kata sandi", async () => {
+    setup();
+    await userEvent.type(screen.getByLabelText("Kata sandi baru"), "123");
+    await userEvent.type(screen.getByLabelText("Ulangi kata sandi baru"), "321");
     await userEvent.click(screen.getByRole("button", { name: "Ubah kata sandi" }));
-    await waitFor(() =>
-      expect(userApi.updatePassword).toHaveBeenCalledWith({
-        password: "lama123",
-        new_password: "baru123",
-        new_password_confirmation: "baru123",
-      }),
-    );
+    expect(screen.getByText("Kata sandi saat ini wajib diisi")).toBeInTheDocument();
+    expect(screen.getByText("Kata sandi baru minimal 6 karakter")).toBeInTheDocument();
+    expect(screen.getByText("Konfirmasi tidak sama")).toBeInTheDocument();
+    expect(putMyPassword).not.toHaveBeenCalled();
+  });
+
+  it("ganti kata sandi berhasil mengosongkan form", async () => {
+    putMyPassword.mockResolvedValue({});
+    setup();
+    await userEvent.type(screen.getByLabelText("Kata sandi saat ini"), "lama123");
+    await userEvent.type(screen.getByLabelText("Kata sandi baru"), "baru1234");
+    await userEvent.type(screen.getByLabelText("Ulangi kata sandi baru"), "baru1234");
+    await userEvent.click(screen.getByRole("button", { name: "Ubah kata sandi" }));
+    await waitFor(() => expect(putMyPassword).toHaveBeenCalledWith({ password: "lama123", new_password: "baru1234" }));
     await waitFor(() => expect(screen.getByLabelText("Kata sandi baru")).toHaveValue(""));
-    expect(screen.getByLabelText("Kata sandi saat ini")).toHaveValue("");
   });
 
-  it("menolak konfirmasi kata sandi yang tidak cocok", async () => {
-    open();
+  it("form kata sandi tidak dikosongkan bila API gagal", async () => {
+    putMyPassword.mockRejectedValue(new Error("sandi salah"));
+    setup();
     await userEvent.type(screen.getByLabelText("Kata sandi saat ini"), "lama123");
-    await userEvent.type(screen.getByLabelText("Kata sandi baru"), "baru123");
-    await userEvent.type(screen.getByLabelText("Konfirmasi kata sandi baru"), "beda123");
+    await userEvent.type(screen.getByLabelText("Kata sandi baru"), "baru1234");
+    await userEvent.type(screen.getByLabelText("Ulangi kata sandi baru"), "baru1234");
     await userEvent.click(screen.getByRole("button", { name: "Ubah kata sandi" }));
-    expect(showErrorDialog).toHaveBeenCalledWith("Konfirmasi kata sandi baru tidak cocok.");
-    expect(userApi.updatePassword).not.toHaveBeenCalled();
-  });
-
-  it("flag sukses direset oleh halaman", async () => {
-    const { store } = open();
-    act(() => {
-      store.dispatch(setIsChangeProfilePhotoAction(true));
-    });
-    await waitFor(() => expect(store.getState().users.isChangeProfilePhoto).toBe(false));
-    act(() => {
-      store.dispatch(setIsChangeProfilePasswordAction(true));
-    });
-    await waitFor(() => expect(store.getState().users.isChangeProfilePassword).toBe(false));
+    await waitFor(() => expect(putMyPassword).toHaveBeenCalled());
+    expect(screen.getByLabelText("Kata sandi baru")).toHaveValue("baru1234");
   });
 });

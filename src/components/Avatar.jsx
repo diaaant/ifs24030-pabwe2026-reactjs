@@ -1,28 +1,17 @@
-import { assetUrl } from "../helpers/apiHelper";
-import { getInitial } from "../helpers/toolsHelper";
+import clsx from "clsx";
+import { initialsOf, resolveMediaUrl } from "../helpers/toolsHelper";
 
-export default function Avatar({
-  name,
-  photo,
-  className = "h-9 w-9",
-  decorative = false,
-}) {
-  const src = assetUrl(photo);
-  if (src) {
-    return (
-      <img
-        src={src}
-        alt={decorative ? "" : name}
-        className={`${className} shrink-0 rounded-full object-cover`}
-      />
-    );
-  }
-  return (
+export default function Avatar({ name, photo, className }) {
+  const src = resolveMediaUrl(photo);
+  const base = "inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full";
+  return src ? (
+    <img src={src} alt={`Foto ${name}`} className={clsx(base, "object-cover", className)} />
+  ) : (
     <span
-      {...(decorative ? { "aria-hidden": "true" } : { "aria-label": name })}
-      className={`${className} flex shrink-0 items-center justify-center rounded-full bg-teal-700 text-sm font-bold text-white`}
+      aria-label={`Inisial ${name}`}
+      className={clsx(base, "bg-amber-300 font-bold text-indigo-950", className)}
     >
-      {getInitial(name)}
+      {initialsOf(name)}
     </span>
   );
 }

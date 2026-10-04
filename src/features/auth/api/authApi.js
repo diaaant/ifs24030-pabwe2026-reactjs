@@ -1,16 +1,4 @@
-import { api } from "../../../helpers/apiHelper";
+import { callApi } from "../../../helpers/apiHelper";
 
-const login = async ({ email, password }) => {
-  const json = await api.post("/auth/login", {
-    body: { email, password },
-    auth: false,
-  });
-  return json.data; // { user, token }
-};
-
-const register = async ({ name, email, password }) =>
-  api.post("/auth/register", { body: { name, email, password }, auth: false });
-
-const logout = async () => api.post("/auth/logout");
-
-export default { login, register, logout };
+export const postRegister = (payload) => callApi("/auth/register", { method: "POST", body: payload });
+export const postLogin = (payload) => callApi("/auth/login", { method: "POST", body: payload });

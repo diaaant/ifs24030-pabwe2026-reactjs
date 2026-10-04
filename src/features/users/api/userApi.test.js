@@ -1,51 +1,31 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import userApi from "./userApi";
-import { api } from "../../../helpers/apiHelper";
+import { beforeEach, expect, it, vi } from "vitest";
+import { fetchMe, fetchUsers, postMyPhoto, putMe, putMyPassword } from "./userApi";
+import { callApi } from "../../../helpers/apiHelper";
 
-vi.mock("../../../helpers/apiHelper", () => ({
-  api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
-}));
+vi.mock("../../../helpers/apiHelper", () => ({ callApi: vi.fn().mockResolvedValue({}) }));
+beforeEach(() => vi.clearAllMocks());
 
-describe("userApi", () => {
-  beforeEach(() => vi.clearAllMocks());
+it("GET /users dan /users/me", async () => {
+  await fetchUsers();
+  await fetchMe();
+  expect(callApi).toHaveBeenNthCalledWith(1, "/users");
+  expect(callApi).toHaveBeenNthCalledWith(2, "/users/me");
+});
 
-  it("getUsers", async () => {
-    api.get.mockResolvedValue({ data: { users: [{ id: 1 }] } });
-    expect(await userApi.getUsers()).toEqual([{ id: 1 }]);
-    expect(api.get).toHaveBeenCalledWith("/users");
+it("PUT /users/me dan /users/me/password", async () => {
+  await putMe({ name: "a" });
+  await putMyPassword({ password: "x", new_password: "y" });
+  expect(callApi).toHaveBeenNthCalledWith(1, "/users/me", { method: "PUT", body: { name: "a" } });
+  expect(callApi).toHaveBeenNthCalledWith(2, "/users/me/password", {
+    method: "PUT",
+    body: { password: "x", new_password: "y" },
   });
+});
 
-  it("getUserById", async () => {
-    api.get.mockResolvedValue({ data: { user: { id: 2 } } });
-    expect(await userApi.getUserById(2)).toEqual({ id: 2 });
-    expect(api.get).toHaveBeenCalledWith("/users/2");
-  });
-
-  it("getProfile", async () => {
-    api.get.mockResolvedValue({ data: { user: { id: 3 } } });
-    expect(await userApi.getProfile()).toEqual({ id: 3 });
-    expect(api.get).toHaveBeenCalledWith("/users/me");
-  });
-
-  it("updateProfile", async () => {
-    api.put.mockResolvedValue({ data: { user: { id: 3, name: "N" } } });
-    expect(await userApi.updateProfile({ name: "N", email: "e@x.y" })).toEqual({ id: 3, name: "N" });
-    expect(api.put).toHaveBeenCalledWith("/users/me", { body: { name: "N", email: "e@x.y" } });
-  });
-
-  it("updatePhoto mengirim FormData berisi photo", async () => {
-    api.post.mockResolvedValue({ status: "success" });
-    const file = new File(["x"], "a.png", { type: "image/png" });
-    await userApi.updatePhoto(file);
-    const [path, options] = api.post.mock.calls[0];
-    expect(path).toBe("/users/me/photo");
-    expect(options.body.get("photo")).toBe(file);
-  });
-
-  it("updatePassword memakai PUT /users/password", async () => {
-    api.put.mockResolvedValue({ status: "success" });
-    const payload = { password: "a", new_password: "b", new_password_confirmation: "b" };
-    await userApi.updatePassword(payload);
-    expect(api.put).toHaveBeenCalledWith("/users/password", { body: payload });
-  });
+it("POST /users/me/photo mengirim FormData berisi field photo", async () => {
+  const file = new File(["x"], "a.png", { type: "image/png" });
+  await postMyPhoto(file);
+  const [path, options] = callApi.mock.calls[0];
+  expect(path).toBe("/users/me/photo");
+  expect(options.form.get("photo")).toBe(file);
 });

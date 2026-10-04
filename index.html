@@ -1,23 +1,20 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="id">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Lost &amp; Found Kampus</title>
-    <meta
-      name="description"
-      content="Aplikasi laporan barang hilang dan barang temuan di kampus. Buat laporan, cari barang, dan lihat statistik."
-    />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
-      rel="stylesheet"
-    />
+    <meta name="description" content="TemuBalik: aplikasi pelaporan barang hilang dan temuan di lingkungan kampus." />
+    <title>TemuBalik &mdash; Lost &amp; Found Kampus</title>
   </head>
-  <body class="bg-slate-50 text-slate-900 font-sans antialiased min-h-screen">
-    <div id="root"></div>
+  <body class="min-h-screen bg-stone-100 text-stone-900 antialiased">
+    <div id="root">
+      <!-- Tampilan awal statis: muncul seketika dari HTML sebelum JavaScript selesai dimuat
+           (mempercepat First Contentful Paint). React akan menggantikannya saat siap. -->
+      <div style="display:flex;min-height:100vh;align-items:center;justify-content:center;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">
+        <p style="margin:0;font-size:1.5rem;font-weight:700;color:#3730a3">TemuBalik</p>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

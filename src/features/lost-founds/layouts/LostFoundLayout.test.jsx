@@ -1,59 +1,54 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Route, Routes } from "react-router-dom";
-import { renderWithProviders } from "../../../test-utils";
-import { getAccessToken, putAccessToken } from "../../../helpers/apiHelper";
-import userApi from "../../users/api/userApi";
 import LostFoundLayout from "./LostFoundLayout";
+import { fetchMe } from "../../users/api/userApi";
+import { renderWithProviders, stateWith } from "../../../test-utils";
 
-vi.mock("../../users/api/userApi", () => ({
-  default: { getProfile: vi.fn() },
-}));
+vi.mock("../../users/api/userApi");
 
-const ui = (
+const tree = (
   <Routes>
-    <Route element={<LostFoundLayout />}>
-      <Route index element={<p>Isi halaman</p>} />
+    <Route path="/" element={<LostFoundLayout />}>
+      <Route index element={<p>Konten dashboard</p>} />
     </Route>
     <Route path="/auth/login" element={<p>Halaman login</p>} />
   </Routes>
 );
 
-describe("LostFoundLayout", () => {
-  beforeEach(() => vi.clearAllMocks());
+const me = { id: 1, name: "Budi", email: "b@x.id", photo: null };
+beforeEach(() => vi.clearAllMocks());
 
-  it("mengarahkan ke login jika tidak ada token", () => {
-    renderWithProviders(ui);
+describe("LostFoundLayout (route guard)", () => {
+  it("tanpa token langsung diarahkan ke login", () => {
+    renderWithProviders(tree);
     expect(screen.getByText("Halaman login")).toBeInTheDocument();
-    expect(userApi.getProfile).not.toHaveBeenCalled();
+    expect(fetchMe).not.toHaveBeenCalled();
   });
 
-  it("memuat profil dan menampilkan navbar, sidebar, dan outlet", async () => {
-    putAccessToken("tok");
-    userApi.getProfile.mockResolvedValue({ id: 1, name: "Dian", email: "d@x.y", photo: null });
-    renderWithProviders(ui);
-    expect(screen.getByText("Isi halaman")).toBeInTheDocument();
-    expect(await screen.findByText("Dian", { selector: "span.hidden" })).toBeInTheDocument();
-    expect(screen.getByRole("navigation")).toBeInTheDocument();
+  it("dengan token memuat profil lalu merender navbar, sidebar, dan konten", async () => {
+    fetchMe.mockResolvedValue({ data: { user: me } });
+    renderWithProviders(tree, { preloadedState: stateWith({ auth: { token: "t" } }) });
+    expect(screen.getByRole("status")).toHaveTextContent("Memuat sesi");
+    expect(await screen.findByText("Konten dashboard")).toBeInTheDocument();
+    expect(screen.getByRole("complementary", { name: "Navigasi utama" })).toBeInTheDocument();
+    expect(screen.getByText("Sesi aktif")).toBeInTheDocument();
   });
 
-  it("tombol menu membuka sidebar mobile dan overlay menutupnya", async () => {
-    putAccessToken("tok");
-    userApi.getProfile.mockResolvedValue({ id: 1, name: "Dian", email: "d@x.y", photo: null });
-    renderWithProviders(ui);
-    await screen.findByText("Dian", { selector: "span.hidden" });
-    await userEvent.click(screen.getByRole("button", { name: "Buka menu" }));
-    expect(screen.getByRole("complementary")).toHaveClass("translate-x-0");
-    await userEvent.click(screen.getByTestId("sidebar-overlay"));
-    expect(screen.getByRole("complementary")).toHaveClass("-translate-x-full");
-  });
-
-  it("mengarahkan ke login dan menghapus token jika profil gagal dimuat", async () => {
-    putAccessToken("kadaluarsa");
-    userApi.getProfile.mockRejectedValue(new Error("Unauthenticated."));
-    renderWithProviders(ui);
+  it("token tidak valid membersihkan sesi dan kembali ke login", async () => {
+    fetchMe.mockRejectedValue(new Error("401"));
+    const { store } = renderWithProviders(tree, { preloadedState: stateWith({ auth: { token: "basi" } }) });
     expect(await screen.findByText("Halaman login")).toBeInTheDocument();
-    expect(getAccessToken()).toBeNull();
+    expect(store.getState().auth.token).toBeNull();
+  });
+
+  it("drawer mobile dibuka dari navbar dan ditutup lewat overlay", async () => {
+    fetchMe.mockResolvedValue({ data: { user: me } });
+    renderWithProviders(tree, { preloadedState: stateWith({ auth: { token: "t" } }) });
+    await screen.findByText("Konten dashboard");
+    await userEvent.click(screen.getByRole("button", { name: "Buka menu" }));
+    await userEvent.click(screen.getByTestId("sidebar-overlay"));
+    await waitFor(() => expect(screen.queryByTestId("sidebar-overlay")).not.toBeInTheDocument());
   });
 });
