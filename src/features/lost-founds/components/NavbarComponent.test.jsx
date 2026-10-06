@@ -40,7 +40,7 @@ describe("NavbarComponent", () => {
 
   it("dropdown dapat dibuka dan ditutup", async () => {
     setup();
-    const trigger = screen.getByRole("button", { name: /Budi Santoso/ });
+    const trigger = screen.getByRole("button", { name: /Menu profil/i });
     await userEvent.click(trigger);
     expect(screen.getByRole("menu")).toBeInTheDocument();
     expect(screen.getByText("budi@del.ac.id")).toBeInTheDocument();
@@ -50,7 +50,7 @@ describe("NavbarComponent", () => {
 
   it("menu Profil saya menutup dropdown dan berpindah halaman", async () => {
     setup();
-    await userEvent.click(screen.getByRole("button", { name: /Budi Santoso/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Menu profil/i }));
     await userEvent.click(screen.getByRole("menuitem", { name: /Profil saya/ }));
     expect(screen.getByText("Halaman profil")).toBeInTheDocument();
   });
@@ -58,7 +58,7 @@ describe("NavbarComponent", () => {
   it("logout menghapus token dan mengarahkan ke login", async () => {
     localStorage.setItem("temubalik.token", "t");
     const { store } = setup();
-    await userEvent.click(screen.getByRole("button", { name: /Budi Santoso/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Menu profil/i }));
     await userEvent.click(screen.getByRole("menuitem", { name: /Keluar/ }));
     expect(store.getState().auth.token).toBeNull();
     expect(localStorage.getItem("temubalik.token")).toBeNull();

@@ -8,17 +8,17 @@ import ModalShell from "./ModalShell";
 describe("Avatar", () => {
   it("menampilkan gambar jika ada foto", () => {
     render(<Avatar name="Dian" photo="https://x.test/p.png" />);
-    expect(screen.getByAltText("Dian")).toHaveAttribute("src", "https://x.test/p.png");
+    expect(screen.getByAltText("Foto Dian")).toHaveAttribute("src", "https://x.test/p.png");
   });
 
   it("menampilkan inisial jika tidak ada foto", () => {
     render(<Avatar name="Dian" photo={null} className="h-20 w-20" />);
-    expect(screen.getByLabelText("Dian")).toHaveTextContent("D");
+    expect(screen.getByLabelText("Inisial Dian")).toHaveTextContent("D");
   });
 
   it("memakai ukuran default", () => {
     render(<Avatar name="Rafael" />);
-    expect(screen.getByLabelText("Rafael")).toHaveClass("h-9");
+    expect(screen.getByLabelText("Inisial Rafael")).toHaveClass("h-9");
   });
 });
 

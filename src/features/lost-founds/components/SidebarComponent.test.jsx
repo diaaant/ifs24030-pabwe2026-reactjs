@@ -6,7 +6,9 @@ import { renderWithProviders } from "../../../test-utils";
 
 const setup = (route, open = false) => {
   const onClose = vi.fn();
-  renderWithProviders(<SidebarComponent open={open} onClose={onClose} />, { route });
+  renderWithProviders(<SidebarComponent open={open} onClose={onClose} />, {
+    route,
+  });
   return onClose;
 };
 
@@ -19,7 +21,10 @@ describe("SidebarComponent", () => {
     ["/profile", "Profil Saya"],
   ])("rute %s menandai menu %s sebagai aktif", (route, label) => {
     setup(route);
-    expect(screen.getByRole("link", { name: label })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: label })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
     expect(screen.getAllByRole("link", { current: "page" })).toHaveLength(1);
   });
 
@@ -33,7 +38,7 @@ describe("SidebarComponent", () => {
     await userEvent.click(screen.getByTestId("sidebar-overlay"));
     await userEvent.click(screen.getByRole("button", { name: "Tutup menu" }));
     await userEvent.click(screen.getByRole("link", { name: "Pengguna" }));
-    await userEvent.click(screen.getByRole("link", { name: /TemuBalik/ }));
+    await userEvent.click(screen.getByRole("link", { name: /Temu\s*Balik/i }));
     expect(onClose).toHaveBeenCalledTimes(4);
   });
 });

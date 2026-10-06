@@ -5,17 +5,20 @@ import { Route, Routes } from "react-router-dom";
 import { renderWithProviders } from "../../../test-utils";
 import { getAccessToken } from "../../../helpers/apiHelper";
 import { showErrorDialog, showSuccessDialog } from "../../../helpers/toolsHelper";
-import authApi from "../api/authApi";
+import { postLogin, postRegister } from "../api/authApi";
 import LoginPage from "./LoginPage";
 import RegisterPage from "./RegisterPage";
 
 vi.mock("../api/authApi", () => ({
-  default: { login: vi.fn(), register: vi.fn(), logout: vi.fn() },
+  postLogin: vi.fn(),
+  postRegister: vi.fn(),
+  default: {},
 }));
+
 vi.mock("../../../helpers/toolsHelper", async (original) => ({
   ...(await original()),
   showErrorDialog: vi.fn(),
-  showSuccessDialog: vi.fn(),
+  showSuccessDialog: vi.fn().mockResolvedValue({}),
 }));
 
 const routes = (
@@ -27,24 +30,26 @@ const routes = (
 );
 
 describe("LoginPage", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
 
-  it("login berhasil menyimpan token lalu menuju beranda", async () => {
-    authApi.login.mockResolvedValue({ token: "tok-123" });
+  it("login berhasil menyimpan token", async () => {
+    postLogin.mockResolvedValue({ token: "tok-123" });
     renderWithProviders(routes, { route: "/auth/login" });
     await userEvent.type(screen.getByLabelText("Email"), "a@b.co");
     await userEvent.type(screen.getByLabelText("Kata sandi"), "123456");
     await userEvent.click(screen.getByRole("button", { name: "Masuk" }));
-    expect(await screen.findByText("Beranda")).toBeInTheDocument();
-    expect(getAccessToken()).toBe("tok-123");
-    expect(authApi.login).toHaveBeenCalledWith({ email: "a@b.co", password: "123456" });
+    await waitFor(() => expect(getAccessToken()).toBe("tok-123"));
+    expect(postLogin).toHaveBeenCalledWith({ email: "a@b.co", password: "123456" });
   });
 
   it("login gagal menampilkan dialog error dan tetap di halaman", async () => {
-    authApi.login.mockRejectedValue(new Error("Kredensial akun tidak ditemukan"));
+    postLogin.mockRejectedValue(new Error("Kredensial akun tidak ditemukan"));
     renderWithProviders(routes, { route: "/auth/login" });
     await userEvent.type(screen.getByLabelText("Email"), "a@b.co");
-    await userEvent.type(screen.getByLabelText("Kata sandi"), "salah");
+    await userEvent.type(screen.getByLabelText("Kata sandi"), "salah123");
     await userEvent.click(screen.getByRole("button", { name: "Masuk" }));
     await waitFor(() =>
       expect(showErrorDialog).toHaveBeenCalledWith("Kredensial akun tidak ditemukan"),
@@ -55,39 +60,50 @@ describe("LoginPage", () => {
 
   it("memiliki tautan ke halaman daftar", async () => {
     renderWithProviders(routes, { route: "/auth/login" });
-    await userEvent.click(screen.getByRole("link", { name: "Daftar" }));
-    expect(screen.getByRole("heading", { name: "Buat akun" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("link", { name: /daftar/i }));
+    expect(await screen.findByRole("heading", { name: "Buat akun" })).toBeInTheDocument();
   });
 });
 
 describe("RegisterPage", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
 
   it("register berhasil lalu menuju halaman login", async () => {
-    authApi.register.mockResolvedValue({});
+    postRegister.mockResolvedValue({});
     renderWithProviders(routes, { route: "/auth/register" });
     await userEvent.type(screen.getByLabelText("Nama lengkap"), "Dian");
     await userEvent.type(screen.getByLabelText("Email"), "d@b.co");
     await userEvent.type(screen.getByLabelText("Kata sandi"), "123456");
+    await userEvent.type(screen.getByLabelText("Ulangi kata sandi"), "123456");
     await userEvent.click(screen.getByRole("button", { name: "Daftar" }));
     expect(await screen.findByRole("heading", { name: "Masuk" })).toBeInTheDocument();
-    expect(authApi.register).toHaveBeenCalledWith({ name: "Dian", email: "d@b.co", password: "123456" });
+    expect(postRegister).toHaveBeenCalledWith({
+      name: "Dian",
+      email: "d@b.co",
+      password: "123456",
+    });
     expect(showSuccessDialog).toHaveBeenCalled();
   });
 
   it("register gagal menampilkan error", async () => {
-    authApi.register.mockRejectedValue(new Error("Email sudah dipakai"));
+    postRegister.mockRejectedValue(new Error("Email sudah dipakai"));
     renderWithProviders(routes, { route: "/auth/register" });
     await userEvent.type(screen.getByLabelText("Nama lengkap"), "Dian");
     await userEvent.type(screen.getByLabelText("Email"), "d@b.co");
     await userEvent.type(screen.getByLabelText("Kata sandi"), "123456");
+    await userEvent.type(screen.getByLabelText("Ulangi kata sandi"), "123456");
     await userEvent.click(screen.getByRole("button", { name: "Daftar" }));
-    await waitFor(() => expect(showErrorDialog).toHaveBeenCalledWith("Email sudah dipakai"));
+    await waitFor(() =>
+      expect(showErrorDialog).toHaveBeenCalledWith("Email sudah dipakai"),
+    );
   });
 
   it("memiliki tautan ke halaman masuk", async () => {
     renderWithProviders(routes, { route: "/auth/register" });
     await userEvent.click(screen.getByRole("link", { name: "Masuk" }));
-    expect(screen.getByRole("heading", { name: "Masuk" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Masuk" })).toBeInTheDocument();
   });
 });

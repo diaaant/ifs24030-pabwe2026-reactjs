@@ -3,7 +3,6 @@ import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ChangeCoverModal from "./ChangeCoverModal";
 import { postLostFoundCover } from "../api/lostFoundApi";
-import { showWarningDialog } from "../../../helpers/toolsHelper";
 import { renderWithProviders } from "../../../test-utils";
 
 vi.mock("../api/lostFoundApi");
@@ -13,6 +12,9 @@ vi.mock("../../../helpers/toolsHelper", async (original) => ({
   showSuccessDialog: vi.fn().mockResolvedValue({}),
   showWarningDialog: vi.fn(),
 }));
+
+// Sama seperti resolveMediaUrl: origin diturunkan dari DELCOM_BASEURL.
+const origin = new URL(DELCOM_BASEURL, window.location.origin).origin;
 
 const image = new File(["x"], "foto.png", { type: "image/png" });
 
@@ -39,7 +41,7 @@ describe("ChangeCoverModal", () => {
     setup("uploads/lama.png");
     expect(screen.getByRole("img", { name: "Pratinjau cover" })).toHaveAttribute(
       "src",
-      "https://open-api.delcom.org/uploads/lama.png",
+      `${origin}/uploads/lama.png`,
     );
   });
 
@@ -48,7 +50,7 @@ describe("ChangeCoverModal", () => {
     fireEvent.change(screen.getByLabelText("Berkas gambar"), {
       target: { files: [new File(["x"], "a.pdf", { type: "application/pdf" })] },
     });
-    expect(showWarningDialog).toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent("File harus berupa gambar");
     expect(screen.getByRole("button", { name: "Unggah cover" })).toBeDisabled();
   });
 

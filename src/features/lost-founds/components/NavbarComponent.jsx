@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { IconChevronDown, IconLogout, IconMenu2, IconUser } from "@tabler/icons-react";
+import {
+  IconChevronDown,
+  IconLogout,
+  IconMenu2,
+  IconUser,
+} from "@tabler/icons-react";
 import Avatar from "../../../components/Avatar";
 import { asyncLogout } from "../../auth/states/action";
 
@@ -43,12 +48,17 @@ export default function NavbarComponent({ onOpenMenu }) {
       <div className="relative">
         <button
           type="button"
+          aria-label="Menu profil"
           aria-haspopup="menu"
           aria-expanded={dropdownOpen}
           onClick={() => setDropdownOpen((value) => !value)}
           className="flex items-center gap-2 rounded-full bg-white py-1 pl-1 pr-3 ring-1 ring-stone-200 transition hover:ring-indigo-300"
         >
-          <Avatar name={profile.name} photo={profile.photo} className="size-8 text-xs" />
+          <Avatar
+            name={profile.name}
+            photo={profile.photo}
+            className="size-8 text-xs"
+          />
           <span className="hidden max-w-32 truncate text-sm font-bold text-indigo-950 sm:block">
             {profile.name}
           </span>
@@ -61,7 +71,9 @@ export default function NavbarComponent({ onOpenMenu }) {
             className="absolute right-0 mt-2 w-60 rounded-3xl bg-white p-2 shadow-xl ring-1 ring-stone-200"
           >
             <div className="px-3 py-2">
-              <p className="truncate text-sm font-bold text-indigo-950">{profile.name}</p>
+              <p className="truncate text-sm font-bold text-indigo-950">
+                {profile.name}
+              </p>
               <p className="truncate text-xs text-stone-600">{profile.email}</p>
             </div>
             <Link

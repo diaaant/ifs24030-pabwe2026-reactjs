@@ -1,84 +1,114 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import Swal from "sweetalert2";
 import {
-  buildUrl,
-  callApi,
-  getAccessToken,
-  putAccessToken,
-  removeAccessToken,
-} from "./apiHelper";
+  formatDate,
+  initialsOf,
+  isDone,
+  reporterName,
+  resolveMediaUrl,
+  showConfirmDialog,
+  showErrorDialog,
+  showSuccessDialog,
+  showWarningDialog,
+  toSeries,
+} from "./toolsHelper";
 
-const mockFetch = (response) => {
-  const spy = vi.fn().mockResolvedValue(response);
-  vi.stubGlobal("fetch", spy);
-  return spy;
-};
-const jsonResponse = (json, ok = true, status = 200) => ({ ok, status, json: async () => json });
+vi.mock("sweetalert2", () => ({ default: { fire: vi.fn() } }));
 
-afterEach(() => vi.unstubAllGlobals());
+beforeEach(() => vi.clearAllMocks());
 
-describe("token storage", () => {
-  it("menyimpan, membaca, dan menghapus token", () => {
-    expect(getAccessToken()).toBeNull();
-    putAccessToken("abc");
-    expect(getAccessToken()).toBe("abc");
-    removeAccessToken();
-    expect(getAccessToken()).toBeNull();
+describe("dialog SweetAlert2", () => {
+  it("success / error / warning memanggil Swal dengan ikon yang tepat", async () => {
+    await showSuccessDialog("ok");
+    await showErrorDialog("gagal");
+    await showWarningDialog("awas");
+    expect(Swal.fire.mock.calls.map(([o]) => o.icon)).toEqual([
+      "success",
+      "error",
+      "warning",
+    ]);
+    expect(Swal.fire.mock.calls[0][0].text).toBe("ok");
+  });
+
+  it("showConfirmDialog mengembalikan isConfirmed", async () => {
+    Swal.fire.mockResolvedValueOnce({ isConfirmed: true });
+    expect(await showConfirmDialog("hapus?")).toBe(true);
+    Swal.fire.mockResolvedValueOnce({ isConfirmed: false });
+    expect(await showConfirmDialog("hapus?")).toBe(false);
   });
 });
 
-describe("buildUrl", () => {
-  it("menambahkan query dan membuang nilai kosong", () => {
-    const url = buildUrl("/lost-founds", { status: "lost", is_me: 1, a: "", b: null, c: undefined });
-    expect(url).toBe(`${DELCOM_BASEURL}/lost-founds?status=lost&is_me=1`);
+describe("formatDate", () => {
+  it("memformat tanggal ISO ke bahasa Indonesia", () => {
+    expect(formatDate("2026-03-05T10:00:00Z")).toMatch(/2026/);
   });
-
-  it("bekerja tanpa params", () => {
-    expect(buildUrl("/users")).toBe(`${DELCOM_BASEURL}/users`);
+  it("mengembalikan strip untuk kosong / tidak valid", () => {
+    expect(formatDate(null)).toBe("-");
+    expect(formatDate("bukan-tanggal")).toBe("-");
   });
 });
 
-describe("callApi", () => {
-  it("GET tanpa token dan tanpa body", async () => {
-    const spy = mockFetch(jsonResponse({ success: true, data: { ok: 1 } }));
-    const json = await callApi("/users");
-    expect(json.data.ok).toBe(1);
-    const [, init] = spy.mock.calls[0];
-    expect(init.method).toBe("GET");
-    expect(init.headers.Authorization).toBeUndefined();
-    expect(init.body).toBeUndefined();
-  });
+describe("resolveMediaUrl", () => {
+  // Sama seperti implementasi: origin diturunkan dari DELCOM_BASEURL.
+  const origin = new URL(DELCOM_BASEURL, window.location.origin).origin;
 
-  it("mengirim bearer token dan body JSON", async () => {
-    putAccessToken("tok");
-    const spy = mockFetch(jsonResponse({ success: true }));
-    await callApi("/auth/login", { method: "POST", body: { a: 1 } });
-    const [, init] = spy.mock.calls[0];
-    expect(init.headers.Authorization).toBe("Bearer tok");
-    expect(init.headers["Content-Type"]).toBe("application/json");
-    expect(init.body).toBe(JSON.stringify({ a: 1 }));
+  it("menangani null, URL absolut, dan path relatif", () => {
+    expect(resolveMediaUrl(null)).toBeNull();
+    expect(resolveMediaUrl("https://x.test/a.png")).toBe(
+      "https://x.test/a.png",
+    );
+    expect(resolveMediaUrl("/uploads/a.png")).toBe(`${origin}/uploads/a.png`);
+    expect(resolveMediaUrl("uploads/a.png")).toBe(`${origin}/uploads/a.png`);
   });
+});
 
-  it("mengirim FormData apa adanya tanpa Content-Type", async () => {
-    const spy = mockFetch(jsonResponse({ success: true }));
-    const form = new FormData();
-    await callApi("/x", { method: "POST", form });
-    const [, init] = spy.mock.calls[0];
-    expect(init.body).toBe(form);
-    expect(init.headers["Content-Type"]).toBeUndefined();
+describe("isDone", () => {
+  it("membaca is_completed berupa angka/boolean/kosong", () => {
+    expect(isDone({ is_completed: 1 })).toBe(true);
+    expect(isDone({ is_completed: "0" })).toBe(false);
+    expect(isDone({ is_completed: true })).toBe(true);
+    expect(isDone(undefined)).toBe(false);
   });
+});
 
-  it("melempar error dengan pesan dari server", async () => {
-    mockFetch(jsonResponse({ success: false, message: "Salah" }, false, 400));
-    await expect(callApi("/x")).rejects.toThrow("Salah");
+describe("reporterName", () => {
+  it("memilih sumber nama sesuai prioritas", () => {
+    expect(reporterName({ author: { name: "A" } })).toBe("A");
+    expect(reporterName({ user: { name: "U" } })).toBe("U");
+    expect(reporterName({ user_id: 2 }, [{ id: 2, name: "Dari daftar" }])).toBe(
+      "Dari daftar",
+    );
+    expect(reporterName({ user_id: 9 })).toBe("Pelapor anonim");
   });
+});
 
-  it("melempar error generik bila respons bukan JSON", async () => {
-    mockFetch({ ok: false, status: 500, json: async () => { throw new Error("bad json"); } });
-    await expect(callApi("/x")).rejects.toThrow("Permintaan gagal (500)");
+describe("initialsOf", () => {
+  it("mengambil maksimal dua inisial", () => {
+    expect(initialsOf("budi santoso wijaya")).toBe("BS");
+    expect(initialsOf("")).toBe("?");
+    expect(initialsOf(undefined)).toBe("?");
   });
+});
 
-  it("menganggap success:false sebagai error walau HTTP 200", async () => {
-    mockFetch(jsonResponse({ success: false, message: "Ditolak" }));
-    await expect(callApi("/x")).rejects.toThrow("Ditolak");
+describe("toSeries", () => {
+  it("menormalkan array, objek, dan bentuk {stats}", () => {
+    expect(
+      toSeries([
+        { date: "01", total: 3 },
+        { month: "Mar", count: 2 },
+        { value: 4 },
+        {},
+      ]),
+    ).toEqual([
+      { label: "01", value: 3 },
+      { label: "Mar", value: 2 },
+      { label: "3", value: 4 },
+      { label: "4", value: 0 },
+    ]);
+    expect(toSeries({ stats: { Senin: 5 } })).toEqual([
+      { label: "Senin", value: 5 },
+    ]);
+    expect(toSeries({ label: "x" }).length).toBe(1);
+    expect(toSeries(null)).toEqual([]);
   });
 });

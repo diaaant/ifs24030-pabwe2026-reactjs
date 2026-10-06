@@ -39,7 +39,9 @@ export const formatDate = (iso) => {
 export const resolveMediaUrl = (path) => {
   if (!path) return null;
   if (/^https?:\/\//.test(path)) return path;
-  return `${new URL(DELCOM_BASEURL).origin}/${path.replace(/^\//, "")}`;
+  // DELCOM_BASEURL boleh relatif (mis. "/api-proxy"), jadi beri origin sebagai basis.
+  const origin = new URL(DELCOM_BASEURL, window.location.origin).origin;
+  return `${origin}/${path.replace(/^\//, "")}`;
 };
 
 export const isDone = (item) => Boolean(Number(item?.is_completed));

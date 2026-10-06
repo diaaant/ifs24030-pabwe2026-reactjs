@@ -2,11 +2,14 @@ import { expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import Avatar from "./Avatar";
 
+// Sama seperti resolveMediaUrl: origin diturunkan dari DELCOM_BASEURL.
+const origin = new URL(DELCOM_BASEURL, window.location.origin).origin;
+
 it("menampilkan foto bila tersedia", () => {
   render(<Avatar name="Budi Santoso" photo="uploads/b.png" />);
   expect(screen.getByRole("img", { name: "Foto Budi Santoso" })).toHaveAttribute(
     "src",
-    "https://open-api.delcom.org/uploads/b.png",
+    `${origin}/uploads/b.png`,
   );
 });
 

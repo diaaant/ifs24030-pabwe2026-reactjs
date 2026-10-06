@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { asyncGetStats } from "../states/lostFoundThunks";
+import { asyncGetLostFoundStats } from "../states/action";
 
 const sum = (obj) => Object.values(obj).reduce((total, value) => total + value, 0);
 
@@ -10,10 +10,11 @@ export default function StatsPage() {
   const [period, setPeriod] = useState("daily");
 
   useEffect(() => {
-    dispatch(asyncGetStats());
+    dispatch(asyncGetLostFoundStats());
   }, [dispatch]);
 
-  const data = stats[period];
+  const data = stats?.[period] ?? null;
+  // ... sisanya sama
   const labels = data ? Object.keys(data.stats_losts) : [];
   const rows = labels.map((label) => ({
     label,

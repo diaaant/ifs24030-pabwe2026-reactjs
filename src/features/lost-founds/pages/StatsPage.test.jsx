@@ -2,12 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "../../../test-utils";
-import lostFoundApi from "../api/lostFoundApi";
+import * as api from "../api/lostFoundApi";
 import StatsPage from "./StatsPage";
 
-vi.mock("../api/lostFoundApi", () => ({
-  default: { getStatsDaily: vi.fn(), getStatsMonthly: vi.fn() },
-}));
+vi.mock("../api/lostFoundApi");
 vi.mock("../../../helpers/toolsHelper", async (original) => ({
   ...(await original()),
   showErrorDialog: vi.fn(),
@@ -30,8 +28,8 @@ const monthly = make(["09-2026", "10-2026"], [0, 0], [0, 0], [0, 0], [0, 0]);
 describe("StatsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    lostFoundApi.getStatsDaily.mockResolvedValue(daily);
-    lostFoundApi.getStatsMonthly.mockResolvedValue(monthly);
+    api.fetchStatsDaily.mockResolvedValue({ data: daily });
+    api.fetchStatsMonthly.mockResolvedValue({ data: monthly });
   });
 
   it("menampilkan loading lalu statistik harian", async () => {

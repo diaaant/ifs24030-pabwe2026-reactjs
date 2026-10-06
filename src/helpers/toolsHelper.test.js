@@ -46,10 +46,11 @@ describe("formatDate", () => {
 
 describe("resolveMediaUrl", () => {
   it("menangani null, URL absolut, dan path relatif", () => {
+    const origin = window.location.origin;
     expect(resolveMediaUrl(null)).toBeNull();
     expect(resolveMediaUrl("https://x.test/a.png")).toBe("https://x.test/a.png");
-    expect(resolveMediaUrl("/uploads/a.png")).toBe("https://open-api.delcom.org/uploads/a.png");
-    expect(resolveMediaUrl("uploads/a.png")).toBe("https://open-api.delcom.org/uploads/a.png");
+    expect(resolveMediaUrl("/uploads/a.png")).toBe(`${origin}/uploads/a.png`);
+    expect(resolveMediaUrl("uploads/a.png")).toBe(`${origin}/uploads/a.png`);
   });
 });
 

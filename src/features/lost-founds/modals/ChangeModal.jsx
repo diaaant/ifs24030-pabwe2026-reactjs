@@ -1,19 +1,25 @@
+import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import ModalShell from "../../../components/ModalShell";
 import ReportForm from "../components/ReportForm";
 import { isDone } from "../../../helpers/toolsHelper";
 import { asyncChangeLostFound } from "../states/action";
+import { resetLostFoundFlagsAction } from "../states/lostFoundActions";
 
 export default function ChangeModal({ item, onClose, onSaved }) {
   const dispatch = useDispatch();
   const busy = useSelector((state) => state.lostFounds.isLostFoundChange);
+  const changed = useSelector((state) => state.lostFounds.isLostFoundChanged);
 
-  const save = async (payload) => {
-    if (await dispatch(asyncChangeLostFound(item.id, payload))) {
-      onSaved();
-      onClose();
-    }
-  };
+  // Tutup modal ketika proses ubah berhasil (flag menyala)
+  useEffect(() => {
+    if (!changed) return;
+    dispatch(resetLostFoundFlagsAction());
+    onSaved?.();
+    onClose();
+  }, [changed, dispatch, onSaved, onClose]);
+
+  const save = (payload) => dispatch(asyncChangeLostFound(item.id, payload));
 
   return (
     <ModalShell title="Ubah laporan" subtitle="Perbarui keterangan atau status penyelesaian." onClose={onClose}>
